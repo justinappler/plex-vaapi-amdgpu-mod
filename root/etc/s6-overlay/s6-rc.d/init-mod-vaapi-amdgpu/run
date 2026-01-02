@@ -12,14 +12,12 @@ echo "**** Setting up AMD VAAPI drivers ****"
 OUR_AMDGPU_IDS="/usr/share/libdrm/amdgpu.ids"
 
 if [ -f "$OUR_AMDGPU_IDS" ]; then
-    echo "Scanning Plex binaries for hardcoded amdgpu.ids paths..."
+    echo "Scanning for hardcoded amdgpu.ids paths..."
     
-    # Scan both main binaries and any libraries for hardcoded amdgpu.ids paths
-    FOUND_PATHS=$(strings /usr/lib/plexmediaserver/Plex\ Transcoder \
-                          /usr/lib/plexmediaserver/Plex\ Media\ Server \
-                          /usr/lib/plexmediaserver/lib/*.so* 2>/dev/null \
-                  | grep -o '/[^[:space:]]*amdgpu\.ids' \
-                  | sort -u)
+    # Search Plex libs for hardcoded paths using grep -a (binary-safe)
+    # The path pattern from Plex's Conan build system
+    FOUND_PATHS=$(grep -r -h -o -a '/home/runner[^"]*amdgpu\.ids' \
+                  /usr/lib/plexmediaserver/lib/ 2>/dev/null | sort -u)
     
     if [ -n "$FOUND_PATHS" ]; then
         echo "$FOUND_PATHS" | while read -r ids_path; do
@@ -27,13 +25,11 @@ if [ -f "$OUR_AMDGPU_IDS" ]; then
                 echo "Found hardcoded path: $ids_path"
                 mkdir -p "$(dirname "$ids_path")"
                 ln -sf "$OUR_AMDGPU_IDS" "$ids_path"
-                echo "  -> Symlinked to our amdgpu.ids"
+                echo "  -> Symlinked"
             fi
         done
     else
-        echo "No hardcoded amdgpu.ids paths found in Plex binaries"
-        # Fallback: create symlink at standard location anyway
-        mkdir -p /usr/share/libdrm
+        echo "No hardcoded paths found (GPU may show as 'Unknown AMD' - cosmetic only)"
     fi
 else
     echo "WARNING: amdgpu.ids not found at $OUR_AMDGPU_IDS"
