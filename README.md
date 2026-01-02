@@ -26,7 +26,7 @@ This repo includes a GitHub Actions workflow that automatically:
 Your image will be available at:
 
 ```
-ghcr.io/YOUR_GITHUB_USERNAME/plex-vaapi-amdgpu-mod:latest
+ghcr.io/justinappler/plex-vaapi-amdgpu-mod:latest
 ```
 
 ### Manual Build
@@ -34,13 +34,13 @@ ghcr.io/YOUR_GITHUB_USERNAME/plex-vaapi-amdgpu-mod:latest
 Build the mod image for x86_64:
 
 ```bash
-docker build --platform linux/amd64 -t ghcr.io/YOUR_GITHUB_USERNAME/plex-vaapi-amdgpu-mod:latest .
+docker build --platform linux/amd64 -t ghcr.io/justinappler/plex-vaapi-amdgpu-mod:latest .
 ```
 
 Push to GHCR (after `docker login ghcr.io`):
 
 ```bash
-docker push ghcr.io/YOUR_GITHUB_USERNAME/plex-vaapi-amdgpu-mod:latest
+docker push ghcr.io/justinappler/plex-vaapi-amdgpu-mod:latest
 ```
 
 ## Usage
@@ -50,7 +50,7 @@ Set the `DOCKER_MODS` environment variable to point to your GHCR image:
 ```bash
 docker run -d \
     --device /dev/dri/ \
-    -e DOCKER_MODS=ghcr.io/YOUR_GITHUB_USERNAME/plex-vaapi-amdgpu-mod:latest \
+    -e DOCKER_MODS=ghcr.io/justinappler/plex-vaapi-amdgpu-mod:latest \
     -e VERSION=latest \
     ...
     --name plex \
@@ -66,7 +66,7 @@ services:
     devices:
       - /dev/dri:/dev/dri
     environment:
-      - DOCKER_MODS=ghcr.io/YOUR_GITHUB_USERNAME/plex-vaapi-amdgpu-mod:latest
+      - DOCKER_MODS=ghcr.io/justinappler/plex-vaapi-amdgpu-mod:latest
       - VERSION=latest
 ```
 

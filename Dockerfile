@@ -1,6 +1,7 @@
 FROM --platform=linux/amd64 alpine:edge AS source
 
-RUN apk add --no-cache mesa-va-gallium pax-utils libdrm
+# Install mesa VA driver AND libva (we need both from the same source for ABI compatibility)
+RUN apk add --no-cache mesa-va-gallium libva pax-utils libdrm
 
 # Create target directory structure
 RUN mkdir -p /source/vaapi-amdgpu/lib/dri \
@@ -10,10 +11,22 @@ RUN mkdir -p /source/vaapi-amdgpu/lib/dri \
 # Copy the radeonsi VA driver
 RUN cp /usr/lib/dri/radeonsi_drv_video.so /source/vaapi-amdgpu/lib/dri/
 
+# Copy libva libraries (these must match the driver version)
+RUN cp -a /usr/lib/libva*.so* /source/vaapi-amdgpu/lib/
+
 # Copy all shared library dependencies (flattened into lib dir)
 # ldd output format: "libfoo.so => /path/to/libfoo.so (addr)" or "/lib/ld-musl..."
 # We extract the absolute paths and copy each library
 RUN ldd /usr/lib/dri/radeonsi_drv_video.so | \
+    awk '{for(i=1;i<=NF;i++) if($i ~ /^\//) print $i}' | \
+    grep -v '(0x' | \
+    sort -u | \
+    while read -r lib; do \
+        [ -f "$lib" ] && cp -n "$lib" /source/vaapi-amdgpu/lib/ 2>/dev/null || true; \
+    done
+
+# Also get libva dependencies
+RUN ldd /usr/lib/libva.so.2 | \
     awk '{for(i=1;i<=NF;i++) if($i ~ /^\//) print $i}' | \
     grep -v '(0x' | \
     sort -u | \
