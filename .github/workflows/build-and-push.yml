@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch: # Allow manual trigger
+  schedule:
+    # Rebuild monthly to pick up Alpine edge Mesa updates (1st of each month at 3am UTC)
+    - cron: "0 3 1 * *"
 
 env:
   REGISTRY: ghcr.io
