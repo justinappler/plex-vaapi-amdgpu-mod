@@ -2,33 +2,53 @@
 
 echo "**** Setting up AMD VAAPI drivers ****"
 
-# Plex looks for VA drivers here - we need to replace them with ours
-PLEX_VA_CACHE="/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
+PLEX_TRANSCODER="/usr/lib/plexmediaserver/Plex Transcoder"
+PLEX_TRANSCODER_ORIG="/usr/lib/plexmediaserver/Plex Transcoder.orig"
 
-# Create the directory if it doesn't exist
+# ============================================================
+# Step 1: Create wrapper for Plex Transcoder
+# This ensures our libva/Mesa stack is used instead of Plex's
+# ============================================================
+
+# Only create wrapper if we haven't already
+if [ ! -f "$PLEX_TRANSCODER_ORIG" ]; then
+    echo "Creating Plex Transcoder wrapper..."
+    
+    # Move original transcoder
+    mv "$PLEX_TRANSCODER" "$PLEX_TRANSCODER_ORIG"
+    
+    # Create wrapper script that injects our library path
+    cat > "$PLEX_TRANSCODER" << 'EOF'
+#!/bin/bash
+# AMD VAAPI wrapper - ensures modern Mesa/libva is used
+export LD_LIBRARY_PATH="/vaapi-amdgpu/lib:${LD_LIBRARY_PATH}"
+export LIBVA_DRIVERS_PATH="/vaapi-amdgpu/lib/dri"
+export LIBVA_DRIVER_NAME="radeonsi"
+exec "/usr/lib/plexmediaserver/Plex Transcoder.orig" "$@"
+EOF
+    
+    chmod +x "$PLEX_TRANSCODER"
+    echo "Wrapper created successfully"
+else
+    echo "Transcoder wrapper already exists"
+fi
+
+# ============================================================
+# Step 2: Also set up symlinks in Plex's cache (belt & suspenders)
+# ============================================================
+
+PLEX_VA_CACHE="/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
 mkdir -p "$PLEX_VA_CACHE"
 
 # Remove any old/stale drivers Plex may have downloaded
 rm -f "$PLEX_VA_CACHE"/*.so* 2>/dev/null
 
-# Symlink our modern drivers to where Plex expects them
+# Symlink our modern drivers
 for driver in /vaapi-amdgpu/lib/dri/*.so; do
     if [ -f "$driver" ]; then
         ln -sf "$driver" "$PLEX_VA_CACHE/$(basename "$driver")"
-        echo "Linked: $(basename "$driver")"
-    fi
-done
-
-# Also need to ensure Plex uses our libva - create a wrapper environment
-# by symlinking our libs into the Plex cache area
-PLEX_LIB_CACHE="/config/Library/Application Support/Plex Media Server/Cache/va-lib-linux-x86_64"
-mkdir -p "$PLEX_LIB_CACHE"
-
-for lib in /vaapi-amdgpu/lib/*.so*; do
-    if [ -f "$lib" ]; then
-        ln -sf "$lib" "$PLEX_LIB_CACHE/$(basename "$lib")" 2>/dev/null
+        echo "Linked driver: $(basename "$driver")"
     fi
 done
 
 echo "**** AMD VAAPI setup complete ****"
-
