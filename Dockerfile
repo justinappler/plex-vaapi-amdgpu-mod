@@ -6,7 +6,8 @@ RUN apk add --no-cache mesa-va-gallium libva pax-utils libdrm
 # Create target directory structure
 RUN mkdir -p /source/vaapi-amdgpu/lib/dri \
              /source/usr/share/libdrm \
-             /source/etc/s6-overlay/s6-rc.d/svc-plex
+             /source/etc/s6-overlay/s6-rc.d/svc-plex \
+             /source/etc/cont-init.d
 
 # Copy the radeonsi VA driver
 RUN cp /usr/lib/dri/radeonsi_drv_video.so /source/vaapi-amdgpu/lib/dri/
@@ -43,8 +44,14 @@ RUN for f in /lib/ld-musl-*.so.1 /lib/libc.musl-*.so.1; do \
 RUN [ -f /usr/share/libdrm/amdgpu.ids ] && \
     cp /usr/share/libdrm/amdgpu.ids /source/usr/share/libdrm/ || true
 
-# Copy the run script for s6-overlay
+# Copy the run script for s6-overlay (Plex service)
 COPY run /source/etc/s6-overlay/s6-rc.d/svc-plex/
+
+# Copy the init script that sets up symlinks in Plex's expected locations
+COPY root/ /source/
+
+# Make init script executable
+RUN chmod +x /source/etc/cont-init.d/*
 
 FROM scratch
 

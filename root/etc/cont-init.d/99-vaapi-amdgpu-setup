@@ -1,0 +1,34 @@
+#!/usr/bin/with-contenv bash
+
+echo "**** Setting up AMD VAAPI drivers ****"
+
+# Plex looks for VA drivers here - we need to replace them with ours
+PLEX_VA_CACHE="/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
+
+# Create the directory if it doesn't exist
+mkdir -p "$PLEX_VA_CACHE"
+
+# Remove any old/stale drivers Plex may have downloaded
+rm -f "$PLEX_VA_CACHE"/*.so* 2>/dev/null
+
+# Symlink our modern drivers to where Plex expects them
+for driver in /vaapi-amdgpu/lib/dri/*.so; do
+    if [ -f "$driver" ]; then
+        ln -sf "$driver" "$PLEX_VA_CACHE/$(basename "$driver")"
+        echo "Linked: $(basename "$driver")"
+    fi
+done
+
+# Also need to ensure Plex uses our libva - create a wrapper environment
+# by symlinking our libs into the Plex cache area
+PLEX_LIB_CACHE="/config/Library/Application Support/Plex Media Server/Cache/va-lib-linux-x86_64"
+mkdir -p "$PLEX_LIB_CACHE"
+
+for lib in /vaapi-amdgpu/lib/*.so*; do
+    if [ -f "$lib" ]; then
+        ln -sf "$lib" "$PLEX_LIB_CACHE/$(basename "$lib")" 2>/dev/null
+    fi
+done
+
+echo "**** AMD VAAPI setup complete ****"
+
