@@ -24,6 +24,11 @@ if [ ! -f "$PLEX_TRANSCODER_ORIG" ]; then
 export LD_LIBRARY_PATH="/vaapi-amdgpu/lib:${LD_LIBRARY_PATH}"
 export LIBVA_DRIVERS_PATH="/vaapi-amdgpu/lib/dri"
 export LIBVA_DRIVER_NAME="radeonsi"
+
+# Fix shader cache permission issue - use Plex's config dir
+export MESA_SHADER_CACHE_DIR="/config/Library/Application Support/Plex Media Server/Cache/mesa-shader-cache"
+mkdir -p "$MESA_SHADER_CACHE_DIR" 2>/dev/null
+
 exec "/usr/lib/plexmediaserver/Plex Transcoder.orig" "$@"
 EOF
     
@@ -34,7 +39,7 @@ else
 fi
 
 # ============================================================
-# Step 2: Also set up symlinks in Plex's cache (belt & suspenders)
+# Step 2: Set up symlinks in Plex's cache (belt & suspenders)
 # ============================================================
 
 PLEX_VA_CACHE="/config/Library/Application Support/Plex Media Server/Cache/va-dri-linux-x86_64"
@@ -51,4 +56,15 @@ for driver in /vaapi-amdgpu/lib/dri/*.so; do
     fi
 done
 
+# ============================================================
+# Step 3: Verify setup
+# ============================================================
+
+if [ -f /usr/share/libdrm/amdgpu.ids ]; then
+    echo "amdgpu.ids present"
+else
+    echo "WARNING: amdgpu.ids not found"
+fi
+
 echo "**** AMD VAAPI setup complete ****"
+

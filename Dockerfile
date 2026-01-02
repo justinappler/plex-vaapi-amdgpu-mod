@@ -5,9 +5,7 @@ RUN apk add --no-cache mesa-va-gallium libva pax-utils libdrm
 
 # Create target directory structure
 RUN mkdir -p /source/vaapi-amdgpu/lib/dri \
-             /source/usr/share/libdrm \
-             /source/etc/s6-overlay/s6-rc.d/svc-plex \
-             /source/etc/cont-init.d
+             /source/usr/share/libdrm
 
 # Copy the radeonsi VA driver
 RUN cp /usr/lib/dri/radeonsi_drv_video.so /source/vaapi-amdgpu/lib/dri/
@@ -16,8 +14,6 @@ RUN cp /usr/lib/dri/radeonsi_drv_video.so /source/vaapi-amdgpu/lib/dri/
 RUN cp -a /usr/lib/libva*.so* /source/vaapi-amdgpu/lib/
 
 # Copy all shared library dependencies (flattened into lib dir)
-# ldd output format: "libfoo.so => /path/to/libfoo.so (addr)" or "/lib/ld-musl..."
-# We extract the absolute paths and copy each library
 RUN ldd /usr/lib/dri/radeonsi_drv_video.so | \
     awk '{for(i=1;i<=NF;i++) if($i ~ /^\//) print $i}' | \
     grep -v '(0x' | \
@@ -44,14 +40,11 @@ RUN for f in /lib/ld-musl-*.so.1 /lib/libc.musl-*.so.1; do \
 RUN [ -f /usr/share/libdrm/amdgpu.ids ] && \
     cp /usr/share/libdrm/amdgpu.ids /source/usr/share/libdrm/ || true
 
-# Copy the run script for s6-overlay (Plex service)
-COPY run /source/etc/s6-overlay/s6-rc.d/svc-plex/
-
-# Copy the init script that sets up symlinks in Plex's expected locations
+# Copy the s6-overlay init scripts (correct structure for v3)
 COPY root/ /source/
 
-# Make init script executable
-RUN chmod +x /source/etc/cont-init.d/*
+# Make init scripts executable
+RUN chmod +x /source/etc/s6-overlay/s6-rc.d/*/run 2>/dev/null || true
 
 FROM scratch
 

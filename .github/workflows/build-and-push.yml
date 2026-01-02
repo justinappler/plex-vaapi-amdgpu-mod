@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch: # Allow manual trigger
-  schedule:
-    # Rebuild weekly to pick up Alpine edge updates (Sundays at 3am UTC)
-    - cron: "0 3 * * 0"
 
 env:
   REGISTRY: ghcr.io
