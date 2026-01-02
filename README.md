@@ -35,6 +35,7 @@ vainfo: Supported profile and target: VAProfileH264Main : VAEntrypointVLD/VAEntr
 ```
 
 But inside Plex Docker, hardware transcoding fails with:
+
 ```
 libva: radeonsi_drv_video.so init failed
 Failed to initialise VAAPI connection: -1 (unknown libva error)
@@ -60,12 +61,12 @@ Failed to initialise VAAPI connection: -1 (unknown libva error)
 
 This mod is specifically designed for **new AMD GPUs** that aren't recognized by Plex's bundled libraries:
 
-| GPU | Architecture | Status |
-|-----|--------------|--------|
-| Radeon 8060S | gfx1151 / RDNA4 | ✅ Tested, working |
-| Radeon 8050S | gfx1151 / RDNA4 | Should work |
-| Other RDNA4 | gfx115x | Should work |
-| Older AMD GPUs | RDNA3, RDNA2, etc. | Should work |
+| GPU            | Architecture       | Status             |
+| -------------- | ------------------ | ------------------ |
+| Radeon 8060S   | gfx1151 / RDNA4    | ✅ Tested, working |
+| Radeon 8050S   | gfx1151 / RDNA4    | Should work        |
+| Other RDNA4    | gfx115x            | Should work        |
+| Older AMD GPUs | RDNA3, RDNA2, etc. | Should work        |
 
 If your GPU works on the host with `vainfo` but not in Plex Docker, this mod should help.
 
@@ -109,6 +110,7 @@ environment:
 ### Check container startup logs
 
 You should see:
+
 ```
 **** Setting up AMD VAAPI drivers ****
 Creating Plex's hardcoded amdgpu.ids path...
@@ -124,6 +126,7 @@ Linked driver: radeonsi_drv_video.so
 ### Check Plex transcoding logs
 
 When transcoding, look for:
+
 ```
 TPU: hardware transcoding: final decoder: vaapi, final encoder: vaapi
 ```
@@ -133,6 +136,7 @@ This confirms VAAPI is being used for both decode and encode.
 ### Check Plex dashboard
 
 Active transcodes should show **(hw)** indicator:
+
 - `Video: HEVC → H264 (hw)`
 
 ### Harmless warnings you can ignore
@@ -140,11 +144,13 @@ Active transcodes should show **(hw)** indicator:
 ```
 amdgpu: os_same_file_description couldn't determine if two DRM fds reference the same file description.
 ```
+
 This is a Mesa warning and doesn't affect functionality.
 
 ```
 Critical: libusb_init failed
 ```
+
 Plex tells you to ignore this - it's unrelated to transcoding.
 
 ---
@@ -156,6 +162,7 @@ Plex tells you to ignore this - it's unrelated to transcoding.
 If the mod is installed but transcoding still fails:
 
 1. **Clear the mod cache and recreate container**:
+
    ```bash
    docker compose down plex
    rm -rf /path/to/plex/config/.modcache
@@ -163,9 +170,11 @@ If the mod is installed but transcoding still fails:
    ```
 
 2. **Check that wrappers were created**:
+
    ```bash
    docker exec plex head -5 "/usr/lib/plexmediaserver/Plex Transcoder"
    ```
+
    Should show a bash script, not ELF binary header.
 
 3. **Verify libraries are present**:
@@ -182,7 +191,7 @@ devices:
   - /dev/dri:/dev/dri
 group_add:
   - video
-  - render  # if this group exists on your system
+  - render # if this group exists on your system
 ```
 
 ### GPU not recognized (Unknown AMD)
@@ -196,6 +205,7 @@ The "Unknown AMD (XXXX)" message is normal - it just means Plex doesn't have a m
 ### How it works
 
 1. **At container init** (via s6-overlay oneshot):
+
    - Creates Plex's hardcoded `amdgpu.ids` path and symlinks our file there
    - Wraps `Plex Media Server` binary with a script that sets `LD_LIBRARY_PATH`
    - Wraps `Plex Transcoder` binary similarly
@@ -208,19 +218,20 @@ The "Unknown AMD (XXXX)" message is normal - it just means Plex doesn't have a m
 
 ### Bundled components (from Alpine edge)
 
-| Component | Purpose |
-|-----------|---------|
-| `radeonsi_drv_video.so` | AMD VA driver (Mesa 25.x) |
-| `libva*.so` | VA-API library |
-| `libdrm*.so` | DRM library with new GPU support |
-| `libLLVM*.so` | LLVM runtime for Mesa |
-| `amdgpu.ids` | GPU identification database |
-| `ld-musl-x86_64.so.1` | musl dynamic linker |
-| + all transitive dependencies | |
+| Component                     | Purpose                          |
+| ----------------------------- | -------------------------------- |
+| `radeonsi_drv_video.so`       | AMD VA driver (Mesa 25.x)        |
+| `libva*.so`                   | VA-API library                   |
+| `libdrm*.so`                  | DRM library with new GPU support |
+| `libLLVM*.so`                 | LLVM runtime for Mesa            |
+| `amdgpu.ids`                  | GPU identification database      |
+| `ld-musl-x86_64.so.1`         | musl dynamic linker              |
+| + all transitive dependencies |                                  |
 
 ### Why musl?
 
 Plex Media Server is compiled with musl libc (not glibc). You can verify this:
+
 ```bash
 docker exec plex ls /usr/lib/plexmediaserver/lib/ | grep musl
 # ld-musl-x86_64.so.1
