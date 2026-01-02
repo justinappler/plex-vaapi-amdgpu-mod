@@ -3,16 +3,41 @@
 echo "**** Setting up AMD VAAPI drivers ****"
 
 # ============================================================
-# Step 0: Fix Plex's hardcoded amdgpu.ids path
-# Plex's bundled libdrm has a hardcoded path from their build env
+# Step 0: Fix Plex's hardcoded amdgpu.ids path(s)
+# Plex's bundled libdrm has hardcoded paths from their build env.
+# These paths change with each Plex release, so we dynamically
+# detect them by scanning the binaries.
 # ============================================================
 
-PLEX_AMDGPU_IDS_PATH="/home/runner/_work/plex-conan/plex-conan/.conan/data/libdrm/2.4.120-4/plex/main/build/ba4ee9fcf280d38ea7457f18301aac09908b7976/meson-install/share/libdrm"
+OUR_AMDGPU_IDS="/usr/share/libdrm/amdgpu.ids"
 
-echo "Creating Plex's hardcoded amdgpu.ids path..."
-mkdir -p "$PLEX_AMDGPU_IDS_PATH"
-ln -sf /usr/share/libdrm/amdgpu.ids "$PLEX_AMDGPU_IDS_PATH/amdgpu.ids"
-echo "Linked amdgpu.ids to Plex's expected path"
+if [ -f "$OUR_AMDGPU_IDS" ]; then
+    echo "Scanning Plex binaries for hardcoded amdgpu.ids paths..."
+    
+    # Scan both main binaries and any libraries for hardcoded amdgpu.ids paths
+    FOUND_PATHS=$(strings /usr/lib/plexmediaserver/Plex\ Transcoder \
+                          /usr/lib/plexmediaserver/Plex\ Media\ Server \
+                          /usr/lib/plexmediaserver/lib/*.so* 2>/dev/null \
+                  | grep -o '/[^[:space:]]*amdgpu\.ids' \
+                  | sort -u)
+    
+    if [ -n "$FOUND_PATHS" ]; then
+        echo "$FOUND_PATHS" | while read -r ids_path; do
+            if [ -n "$ids_path" ]; then
+                echo "Found hardcoded path: $ids_path"
+                mkdir -p "$(dirname "$ids_path")"
+                ln -sf "$OUR_AMDGPU_IDS" "$ids_path"
+                echo "  -> Symlinked to our amdgpu.ids"
+            fi
+        done
+    else
+        echo "No hardcoded amdgpu.ids paths found in Plex binaries"
+        # Fallback: create symlink at standard location anyway
+        mkdir -p /usr/share/libdrm
+    fi
+else
+    echo "WARNING: amdgpu.ids not found at $OUR_AMDGPU_IDS"
+fi
 
 # ============================================================
 # Step 1: Create wrapper for Plex Transcoder
@@ -100,12 +125,8 @@ done
 # Step 4: Verify setup
 # ============================================================
 
-if [ -f /usr/share/libdrm/amdgpu.ids ]; then
-    echo "amdgpu.ids present at /usr/share/libdrm/"
-fi
-
-if [ -f "$PLEX_AMDGPU_IDS_PATH/amdgpu.ids" ]; then
-    echo "amdgpu.ids linked to Plex's hardcoded path"
+if [ -f "$OUR_AMDGPU_IDS" ]; then
+    echo "amdgpu.ids present at $OUR_AMDGPU_IDS"
 fi
 
 echo "**** AMD VAAPI setup complete ****"
