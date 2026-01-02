@@ -2,6 +2,8 @@
 
 A [linuxserver.io Docker Mod](https://github.com/linuxserver/docker-mods) to enable **hardware transcoding (VAAPI)** for AMD GPUs in [linuxserver/plex](https://docs.linuxserver.io/images/docker-plex).
 
+> **Fork of [`jefflessard/plex-vaapi-amdgpu-mod`](https://github.com/jefflessard/docker-mods)** — rebuilt with modern Mesa to support new AMD GPUs (RDNA4/gfx1151). Auto-rebuilds weekly from Alpine edge.
+
 ## Quick Start
 
 Add this to your Plex container:
